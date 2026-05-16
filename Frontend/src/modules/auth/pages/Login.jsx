@@ -5,7 +5,7 @@ import { Phone, Lock, ArrowRight, ShieldCheck, Loader2, UserRound } from "lucide
 import { toast } from "sonner"
 import { authAPI, userAPI } from "@food/api"
 import { isModuleAuthenticated, setAuthData } from "@food/utils/auth"
-import zozomenLogo from "@/assets/zozomenLogo.png"
+import { getAppLogo, getCompanyName, loadBusinessSettings } from "@common/utils/businessSettings"
 
 export default function UnifiedOTPFastLogin() {
   const RESEND_COOLDOWN_SECONDS = 60
@@ -22,6 +22,33 @@ export default function UnifiedOTPFastLogin() {
   const navigate = useNavigate()
   const searchParams = new URLSearchParams(location.search)
   const referralCode = searchParams.get("ref") || ""
+  const [logoUrl, setLogoUrl] = useState(() => getAppLogo('user'))
+  const [companyName, setCompanyName] = useState(() => getCompanyName())
+  
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await loadBusinessSettings()
+        if (settings) {
+          const userLogo = getAppLogo('user')
+          if (userLogo) setLogoUrl(userLogo)
+          if (settings.companyName) setCompanyName(settings.companyName)
+        }
+      } catch (err) {
+        console.error("Error loading business settings:", err)
+      }
+    }
+    loadSettings()
+    
+    const handleSettingsUpdate = (e) => {
+      const settings = e.detail
+      const userLogo = getAppLogo('user')
+      if (userLogo) setLogoUrl(userLogo)
+      if (settings?.companyName) setCompanyName(settings.companyName)
+    }
+    window.addEventListener('businessSettingsUpdated', handleSettingsUpdate)
+    return () => window.removeEventListener('businessSettingsUpdated', handleSettingsUpdate)
+  }, [])
   
   const submitting = useRef(false)
   const redirectTo = typeof location.state?.redirectTo === "string" && location.state.redirectTo.trim()
@@ -290,16 +317,22 @@ export default function UnifiedOTPFastLogin() {
           <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-xl overflow-hidden"
+            className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-2xl overflow-hidden ring-4 ring-white/20"
           >
-             <img src={zozomenLogo} alt="Zozomen" className="w-full h-full object-contain p-2" />
+             {logoUrl ? (
+               <img src={logoUrl} alt={companyName} className="w-full h-full object-contain p-1" />
+             ) : (
+               <div className="w-full h-full flex items-center justify-center text-[#CB202D] font-bold text-2xl">
+                 {companyName.charAt(0)}
+               </div>
+             )}
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl md:text-5xl font-black tracking-tight mb-1"
           >
-            Zozomen
+            {companyName}
           </motion.h1>
           <p className="text-xs md:text-base font-bold text-white/90 tracking-[0.2em] uppercase">
             Taste the best, forget the rest
